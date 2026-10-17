@@ -1,6 +1,7 @@
 
 from collections import UserDict
 from datetime import datetime, date, timedelta
+import pickle
 
 
 # ---------- Fields ----------
@@ -105,7 +106,6 @@ class AddressBook(UserDict):
             try:
                 next_birthday = birthday.replace(year=today.year)
             except ValueError:
-                # February 29 in a non-leap year
                 next_birthday = date(today.year, 2, 28)
 
             if next_birthday < today:
@@ -121,7 +121,6 @@ class AddressBook(UserDict):
             if 0 <= days_until <= 7:
                 congratulation_date = next_birthday
 
-                # Move weekend greetings to Monday
                 if congratulation_date.weekday() == 5:
                     congratulation_date += timedelta(days=2)
                 elif congratulation_date.weekday() == 6:
@@ -142,6 +141,21 @@ class AddressBook(UserDict):
         return "\n".join(str(record) for record in self.data.values())
 
 
+# ---------- Serialization ----------
+
+def save_data(book, filename="addressbook.pkl"):
+    with open(filename, "wb") as file:
+        pickle.dump(book, file)
+
+
+def load_data(filename="addressbook.pkl"):
+    try:
+        with open(filename, "rb") as file:
+            return pickle.load(file)
+    except FileNotFoundError:
+        return AddressBook()
+
+
 # ---------- Error Handling ----------
 
 def input_error(func):
@@ -159,8 +173,8 @@ def input_error(func):
 
     return wrapper
 
-# ---------- Command Handlers ----------
 
+# ---------- Command Handlers ----------
 
 @input_error
 def add_contact(args, book):
@@ -247,8 +261,10 @@ def birthdays(book):
 
 def parse_input(user_input):
     parts = user_input.strip().split()
+
     if not parts:
         return "", []
+
     command = parts[0].lower()
     args = parts[1:]
     return command, args
@@ -257,7 +273,7 @@ def parse_input(user_input):
 # ---------- Main ----------
 
 def main():
-    book = AddressBook()
+    book = load_data()
     print("Welcome to the assistant bot!")
 
     while True:
@@ -266,6 +282,7 @@ def main():
             command, args = parse_input(user_input)
 
             if command in ("close", "exit"):
+                save_data(book)
                 print("Good bye!")
                 break
 
@@ -303,6 +320,7 @@ def main():
                 print("Invalid command. Try again.")
 
         except (EOFError, KeyboardInterrupt):
+            save_data(book)
             print("\nGood bye!")
             break
 
